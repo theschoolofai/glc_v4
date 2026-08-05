@@ -83,10 +83,12 @@ case "${1:-run}" in
   --status) status ;;
   --start)
     fetch
-    # `cmd1 && cmd2 &` backgrounds the whole && list, so $! was the subshell's pid,
-    # not Jaeger's — and --stop then killed a wrapper that had already exited while
-    # Jaeger ran on. Background the subshell explicitly and `exec` into it: exec
-    # replaces the subshell, nohup execs in turn, so the pid $! records is Jaeger's.
+    # `cmd1 && cmd2 &` backgrounds the whole && list, so $! recorded the pid of the
+    # subshell running that list, not Jaeger's. The subshell stays alive as Jaeger's
+    # parent, so --stop killed the parent, succeeded, and left Jaeger orphaned under
+    # PID 1 with all three ports still bound. Background the subshell explicitly and
+    # `exec` into it: exec replaces the subshell, nohup execs in turn, so the pid $!
+    # records is Jaeger's own.
     ( cd "$PREFIX/$NAME" && exec nohup ./jaeger >"$LOG" 2>&1 ) &
     echo $! >"$PIDFILE"
     for _ in $(seq 1 30); do sleep 1; status >/dev/null 2>&1 && break; done
