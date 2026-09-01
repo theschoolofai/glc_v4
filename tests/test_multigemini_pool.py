@@ -47,3 +47,19 @@ def test_legacy_single_key_is_a_one_member_pool(monkeypatch):
     pool = _providers(monkeypatch, {"GEMINI_API_KEY": "legacy"})
     assert {name for name in pool if name.startswith("gemini_")} == {"gemini_1"}
     assert Router(pool, ["gemini"]).candidates() == ["gemini_1"]
+
+
+def test_ollama_edge_is_a_second_slot_not_a_rename(monkeypatch):
+    monkeypatch.setenv("OLLAMA_MODEL", "llama3.2:1b")
+    monkeypatch.setenv("OLLAMA_URL", "http://127.0.0.1:11434")
+    monkeypatch.setenv("OLLAMA_EDGE_MODEL", "qwen2.5:7b")
+    monkeypatch.setenv("OLLAMA_EDGE_URL", "http://127.0.0.1:11435")
+    pool = providers.build_providers(cache_store=object())
+    assert "ollama" in pool and "ollama_edge" in pool
+    assert pool["ollama"].model == "llama3.2:1b"
+    assert pool["ollama_edge"].model == "qwen2.5:7b"
+    assert pool["ollama"].base_url.rstrip("/") == "http://127.0.0.1:11434"
+    assert pool["ollama_edge"].base_url.rstrip("/") == "http://127.0.0.1:11435"
+    from glc.routing import LIMITS
+    assert "ollama_edge" in LIMITS
+

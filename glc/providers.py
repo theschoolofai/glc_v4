@@ -1232,7 +1232,7 @@ def model_capabilities(provider_name: str, model: str, default_caps: dict) -> di
     m = (model or "").lower()
     if provider_name == "gemini":
         caps["reasoning"] = _gemini_supports_thinking(model)
-    if provider_name == "ollama":
+    if provider_name.startswith("ollama"):
         caps["tools"] = True  # we always have prompted fallback
         caps["reasoning"] = False
     if provider_name in ("groq", "cerebras", "nvidia", "openrouter", "github"):
@@ -1278,6 +1278,13 @@ def build_providers(cache_store):
         out["github"] = GitHubProvider(k, os.getenv("GITHUB_MODEL", "openai/gpt-4.1-mini"))
     if om := os.getenv("OLLAMA_MODEL"):
         out["ollama"] = OllamaProvider(om, os.getenv("OLLAMA_URL", "http://localhost:11434"))
+    # A second local slot, on the same pattern as the numbered Gemini pool: its
+    # own daemon, so its own queue, rate state and circuit breaker. A machine
+    # with no cloud credentials still needs a ladder whose rungs are not all one
+    # provider's menu, and a slot that is only a rename would not give one.
+    if em := os.getenv("OLLAMA_EDGE_MODEL"):
+        out["ollama_edge"] = OllamaProvider(em, os.getenv("OLLAMA_EDGE_URL", "http://localhost:11435"))
+        _LIMITS["ollama_edge"] = dict(_LIMITS["ollama"])
     # V9: bake per-model capability overrides (vision/reasoning) into each
     # instance, so Router.pick() — which reads provider.capabilities directly —
     # sees the resolved truth instead of the class-level default.

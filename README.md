@@ -160,6 +160,33 @@ uv run pytest -q
 
 Never commit `.env`, API keys, local databases, audit records, pairing state, or user memory.
 
+## S15 local two-slot example
+
+`examples/s15/` contains the routing and declared price card used by the
+companion [S15Code assignment](https://github.com/tanmays369/S15Code#part-1).
+It is for machines without cloud credentials:
+
+```bash
+# daemon 1 already listens on 11434
+OLLAMA_HOST=127.0.0.1:11435 ollama serve
+
+export OLLAMA_MODEL=qwen2.5:3b
+export OLLAMA_URL=http://127.0.0.1:11434
+export OLLAMA_EDGE_MODEL=qwen2.5:7b
+export OLLAMA_EDGE_URL=http://127.0.0.1:11435
+export LLM_ORDER=ollama,ollama_edge
+
+mkdir -p runtime/glc
+cp examples/s15/{pricing,routing}.yaml runtime/glc/
+export GLC_CONFIG_DIR="$PWD/runtime/glc"
+uv run glc serve --port 8121
+```
+
+`ollama_edge` is a second gateway provider slot with its own URL and copied
+rate-limit state. It is a separate daemon, queue, and circuit breaker, but not
+a separate vendor or host. The example rates are declared hosted-market
+equivalents; local Ollama did not bill the dollar amounts.
+
 ## License
 
 MIT. See `LICENSE`.
